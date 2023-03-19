@@ -1,23 +1,25 @@
 #include <iostream>
-#include "../main/webserv.hpp"
+#include <fstream>
+#include "../../parsing/conf/ConfigParser.hpp"
+#include "../../configuration/Configuration.hpp"
+#include "../utility/utility.hpp"
+#include "socket.hpp"
 
-#define PORT 80
+
+using namespace std;
 
 int main(int ac, char **av)
 {
+    // SocketClass s;
+    // s.run();
 
-    std::string config_file = "./config/webserv.conf";
+    Configuration config("./conf/default.conf");
 
-    if (ac == 2)
-        config_file = av[1];
-    else if (ac > 2)
-    {
-        std::cout << "Usage: ./webserv <config_file>" << std::endl;
-        return 1;
-    }
+    vector<Server> _server = config.getServers();
 
-    std::cout << "Config file: --> " << config_file << " <--" << std::endl;
+    cout << _server[1].getHost() << endl;
 
-
+    cout << _server[1].getLengthLocation() << endl;
+  
     return 0;
 }
