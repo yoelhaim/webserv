@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: matef <matef@student.42.fr>                +#+  +:+       +#+        */
+/*   By: yel-khad <yel-khad@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/26 02:24:46 by matef             #+#    #+#             */
-/*   Updated: 2023/03/08 16:09:13 by matef            ###   ########.fr       */
+/*   Updated: 2023/03/22 21:17:25 by yel-khad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,22 @@
 #include <vector>
 #include <deque>
 
+#define URI_MAX_SIZE 2048
+#define ALLOWED_CHARACTERS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&'()*+,;="
+
+
+// status of request
+
+#define OK 200
+#define BAD_REQUEST 400
+#define NOT_FOUND 404
+#define METHOD_NOT_ALLOWED 405
+#define REQUEST_URI_TOO_LONG 414
+#define INTERNAL_SERVER_ERROR 500
+#define NOT_IMPLEMENTED 501
+#define VERSION_NOT_SUPPORTED 505
+
+
 using namespace std;
 
 class Request
@@ -32,7 +48,7 @@ class Request
         typedef map<string, Header> Headers;
 
     public:
-        Request(string method, string resource, string version, Headers headers = Headers());
+        Request(string method = "", string resource = "", string version = "", Headers headers = Headers());
         Request(const Request &copy);
         Request &operator=(const Request &copy);
         ~Request();
@@ -41,10 +57,19 @@ class Request
         static Request deserialize(const string& request);
         static vector<string> getVector(string line, char delimiter = ' ');
         
-		bool validVersion();
 		void resource();
 		bool syntaxError();
 		string getRessource();
+        int isReqWellFormed();
+        bool isMethodAllowed();
+        bool allowedChars();
+        // bool transferEncoding();
+        bool acceptUriLength();
+        bool isVersionSupported();
+
+        string getMethod();
+        string getVersion();
+        
 
     private:
         string _method;
