@@ -6,7 +6,8 @@
 /*   By: yoelhaim <yoelhaim@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/23 22:22:26 by matef             #+#    #+#             */
-/*   Updated: 2023/03/23 22:10:37 by yoelhaim         ###   ########.fr       */
+/*   Updated: 2023/04/02 23:36:25 by yel-khad         ###   ########.fr       */
+
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,5 +26,7 @@ std::string getFileContent(std::string file_name);
 bool hasOnlyUppercase(const string &str);
 bool syntaxIsCorrect(vector<string> first_line);
 size_t getFileSize(std::string filename);
+string getComment(int status);
+bool sizeIsHex(string size);
 
 # endif

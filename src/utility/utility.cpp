@@ -6,7 +6,7 @@
 /*   By: matef <matef@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/23 21:42:58 by matef             #+#    #+#             */
-/*   Updated: 2023/03/22 04:29:51 by matef            ###   ########.fr       */
+/*   Updated: 2023/04/18 23:06:30 by matef            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,3 +50,29 @@ bool syntaxIsCorrect(vector<string> first_line)
 }
 
 size_t getFileSize(std::string filename) { return getFileContent(filename).size(); }
+
+string getComment(int status)
+{
+    switch (status)
+    {
+        case 501:
+            return "Not Implemented";
+        case 414:
+            return "Request-URI Too Long";
+        case 413:
+            return "Request Entity Too Large";
+        default:
+            return "Bad Request";
+    }
+}
+
+bool sizeIsHex(string size)
+{
+    for (size_t i = 0; i < size.size(); i++)
+    {
+        if (( size[i] >= '0' && size[i] <= '9' ) || ( size[i] >= 'a' && size[i] <= 'f' ) || ( size[i] >= 'A' && size[i] <= 'F' ))
+            continue;
+        return false;
+    }
+    return true;
+}

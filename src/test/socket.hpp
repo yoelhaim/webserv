@@ -6,7 +6,7 @@
 /*   By: matef <matef@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/24 21:37:17 by matef             #+#    #+#             */
-/*   Updated: 2023/03/23 22:08:05 by matef            ###   ########.fr       */
+/*   Updated: 2023/04/19 06:46:52 by matef            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+
+#include <math.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -42,44 +44,72 @@ const int MAX_REQUEST_SIZE = 1024;
 #define CHUNK_SIZE  1024
 #define LOCALHOST "./www/html"
 
+#include "../methods/get.hpp"
+#include "../server/Worker.hpp"
 
 struct SocketServer
 {
-    SocketServer(int sockfd, int port, std::string host) : sockfd(sockfd), port(port), host(host) {}
+    SocketServer(int sockfd, Server s) : sockfd(sockfd), server(s) {}
     int                 sockfd;
-    int                 port;
-    std::string         host;
+    Server              server;
     int                 addrlen;
     struct sockaddr_in address;
+};
+
+struct HostAndPort
+{
+    string host;
+    short port;
 };
 
 class SocketClass
 {
     public:
-        SocketClass();
+        SocketClass(string config_file = "./config/webserv.conf");
         ~SocketClass();
         int create();
-        void bindSocket(int sockfd, SocketServer &server);
-        void listenSocket(int sockfd);
-        void acceptSocket(int sockfd);
-        int sendFileInPackets(string file, struct pollfd &fds);
+        bool bindSocket(int sockfd, SocketServer &server, HostAndPort hostAndPort);
+        bool listenSocket(int sockfd);
+        int sendFileInPackets(struct pollfd &fds);
         int communicate(struct pollfd &fds);
         void run();
         bool isNewConnection(int listener);
 
-        string joinRootAndPath(string root, string path, Request &httpRequest);
-        struct pollfd createPollfd(int sockfd);
-        void setFds();
+
+        struct  pollfd createPollfd(int sockfd);
+        void    setFds();
+
+        bool    isHeaderReceived(string request);
+
+        bool recvError(int size, int fd);
+
+        unsigned long hexToDec(string hex);
+
+        int handlePostRequest(Client &client);
+        int handleDeleteRequest(Client &client);
+        void sendErrorReply(int i);
+
+        string parseChunked(string body, int *c);
+        Server getServer(int sockfd);
+        Server getServer2(string host);
+        Request                 httpRequest;
         
+        void    closeConnection(int i);
+        void    initResponse(int fd);
+
+        bool isPortBelongToServer(Server server, short port);
+        bool isHostBelongToServer(Server server, string host);
+        bool isSeverNameBelongToServer(Server server, string serverName);
+
+        bool isAllPortDiffrents(Server s1, Server s2);
     private:
-        struct sockaddr_in address;
-        vector<Server> servers;
-        vector<SocketServer> _s;
-        vector<struct pollfd> _fds;
+        vector<Server>          servers;
+        vector<SocketServer>    _s;
+        vector<struct pollfd>   _fds;
 
-        map<int, Client> _clients;
+        map<int, Client>        _clients;
+        MimeTypes _mime;
 
-        Request httpRequest;
 };
 
 

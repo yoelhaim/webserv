@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yoelhaim <yoelhaim@student.42.fr>          +#+  +:+       +#+        */
+/*   By: matef <matef@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/26 02:26:41 by matef             #+#    #+#             */
-/*   Updated: 2023/03/25 02:29:34 by yoelhaim         ###   ########.fr       */
+/*   Updated: 2023/04/19 05:09:31 by matef            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 #include "Request.hpp"
 
 
-Request::Request(string method, string resource, string version, map<string, Header> headers)
+Request::Request(string method, string resource, string version, map<string, string> headers) : _isUploadable(false)
 {
 	this->_method = method, this->_resource = resource;
 	this->_version = version, this->_headers = headers;
@@ -27,10 +27,13 @@ Request &Request::operator=(const Request &copy)
         this->_method = copy._method;
         this->_resource = copy._resource;
         this->_version = copy._version;
+		this->_headers = copy._headers;
+		this->_body = copy._body;
+		this->_queryString = copy._queryString;
+		this->_isUploadable = copy._isUploadable;
     }
     return *this;
 }
-
 
 Request::Request(const Request &copy)
 {
@@ -61,36 +64,43 @@ vector<string> Request::getVector(string line, char delimiter)
     return v;
 }
 
-Request Request::deserialize(const string& request)
+Request Request::deserialize(string request)
 {
-	map<string, Header> headers;
-	map<string, Header>::iterator it;
-	
-	vector<string> 		tokens;
+	map<string, string> headers;
 	vector<string> 		headerFirstLine;
 
+	string head;
+	vector<string> 		tokens;
 	string line;
-	stringstream requestAsFile(request);
+	
+    request.erase(std::remove(request.begin(), request.end(), '\r'), request.end());
+	
+	stringstream res(request);
 
-	getline(requestAsFile, line);
+	getline(res, line);
+	
 	headerFirstLine = Request::getVector(line);
+
 
 	if (headerFirstLine.size() != 3)
 		goto error;
-
-	while (getline(requestAsFile, line))
+	
+	while (getline(res, line))
 	{
-		tokens = getVector(line);
+		
+		tokens = Request::getVector(line);
 		
 		string key = tokens[0];
-		string value = line.substr(key.length());
-		
-		headers.insert(make_pair(key, Header(key, value)));
+		string value = line.substr(key.length() + 1);
+        
+		key.pop_back();
+		headers.insert(make_pair(key, value));
 	}
 
 	return Request(headerFirstLine[0], headerFirstLine[1], headerFirstLine[2], headers);
 
 	error:
+		
 		cerr << request << "\n" << request.size() << " " << request.length() << '\n';
 		return Request("", "", "");
 }
@@ -145,7 +155,7 @@ string Request::serialize()
 	Headers::iterator it = _headers.begin();
 	while (it != _headers.end())
 	{
-		request += it->second.getKey() + it->second.getValue() + endLine;	
+		request += it->first + it->second + endLine;	
 		it++;
 	}
 
@@ -171,11 +181,10 @@ bool Request::isMethodAllowed()
 	return (_method != "GET" && _method != "DELETE" && _method != "POST");
 }
 
-// bool Request::transferEncoding()
-// {
-// 	return (_headers.find("Transfer-Encoding") != _headers.end()\
-// 			&& _headers["Transfer-Encoding"].getValue() != "chunked");
-// }
+bool Request::transferEncoding()
+{
+	return (_headers.find("Transfer-Encoding") != _headers.end());
+}
 
 bool Request::acceptUriLength()
 {
@@ -189,45 +198,138 @@ bool Request::isVersionSupported()
 
 int Request::isReqWellFormed()
 {
-	// if (isMethodAllowed()) return METHOD_NOT_ALLOWED;
-	
-	// if ( transferEncoding() ) 	return NOT_IMPLEMENTED;
-	if ( !allowedChars() ) 		return BAD_REQUEST;
-	if ( acceptUriLength() ) 	return REQUEST_URI_TOO_LONG;
-	if ( isVersionSupported() ) return VERSION_NOT_SUPPORTED;
+	setUrlArgs();
+	resource();
 
-	// MAX_BODY_SIZE
+	// if ( syntaxError() ) 		return BAD_REQUEST;
+
+	if (isMethodAllowed()) return METHOD_NOT_ALLOWED;
+	
+	if ( transferEncoding() )
+	{
+		if (_headers["Transfer-Encoding"] != "chunked")
+			return NOT_IMPLEMENTED;
+	}
+
+	if (getMethod() == "POST")
+	{
+		if ( _headers.find("Content-Length") == _headers.end() && _headers.find("Transfer-Encoding") == _headers.end() )
+			return BAD_REQUEST;
+	}
+
+	if ( !allowedChars() )		return BAD_REQUEST;
+	if ( acceptUriLength() )	return REQUEST_URI_TOO_LONG;
+	if ( isVersionSupported() )	return VERSION_NOT_SUPPORTED;
+
 	return OK;
 }
 
+void Request::setUrlArgs()
+{
+	string url = _resource;
+	
+	size_t pos = url.find('?');
+	if (pos == string::npos)
+		return;
+	
+	_resource = url.substr(0, pos);
+	_queryString = url.substr(pos + 1);
+}
+
+string Request::getQueryString()
+{
+	return _queryString;
+}
+
+bool Request::isUploadable()
+{
+    return _isUploadable;
+}
+
+string Request::getBody()
+{
+	return _body;
+}
+
+void Request::setBody(string request)
+{
+	_body = request;
+}
+
+bool 	Request::isHeaderHasKey(string key)
+{
+	return (_headers.find(key) != _headers.end());	
+}
+
+string 	Request::getValueOf(string key)
+{
+	return _headers[key];
+}
+
+map<string, string> Request::getHeader()
+{
+	return _headers;
+}
+
+void Request::setUploadable()
+{
+	_isUploadable = true;
+}
+
+bool Request::uploadFile(string path)
+{
+    size_t nextLine ;
+    string boundary;
+    string endBoundary;
+
+    vector<string> contentType = Request::getVector(getValueOf("Content-Type"));
+    
+    boundary = "--" + contentType[1].substr(9);
+    endBoundary = boundary + "--";
+
+    size_t start = _body.find(boundary);
+    size_t end = _body.find(endBoundary);
+
+    if (start == string::npos || end == string::npos)
+        return false;
+    
+    string tmp;
+    string bodyHead;
+    vector <string> bodyHeadVector;
+    
+    while (start != string::npos && start < end)
+    {
+		
+        nextLine = _body.find("\r\n\r\n") + 4;
+        bodyHead = _body.substr(0, nextLine);
+
+        while (bodyHead.find("\r\n") != string::npos)
+            bodyHead.replace(bodyHead.find("\r\n"), 2, " ");
+
+        bodyHeadVector = Request::getVector(bodyHead);
+
+        while (bodyHeadVector.size() && bodyHeadVector[0].find("filename") == string::npos)
+            bodyHeadVector.erase(bodyHeadVector.begin());
+		
+        if (!bodyHeadVector.size())
+            break ;
+        
+        string filename = bodyHeadVector[0].substr(bodyHeadVector[0].find("\"") + 1);
+        filename.erase(filename.find("\""));
 
 
+        _body.erase(0, nextLine);
+        start = _body.find(boundary);
+        tmp = _body.substr(0, start);
 
+		if (path[path.length() - 1] != '/') path += "/";
+        ofstream file(path + filename, ios::out | ios::trunc);
+		_body.erase(0, start);
+        file << tmp;
+        tmp.clear();
+    }
+	return true;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Request Request::deserialize(const std::string& request)
-// {
-//     string method = "GET";
-//     string resource = "/";
-//     string version = "HTTP/1.1";
-
-
-
-//     return Request(version, method, resource);
-// }
 
 Request::~Request() {}

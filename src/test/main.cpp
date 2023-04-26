@@ -20,53 +20,40 @@ using namespace std;
     
 
 
+MimeTypes _mime;
 
+void handleSigPipe()
+{
+    signal(SIGPIPE, SIG_IGN);
+}
 
 int main(int ac, char **av)
 {
 
+    string config_file = "./conf/default.conf";
 
-    // if (!file.is_open())
-    // {
-    //     cout << "file not open" << endl;
-    //     return 1;
-    // }
+    if (ac > 2)
+    {
+        cout << "Usage: ./webserv [config_file] (config_file is optional)" << endl;
+        return 1;
+    }
 
-    // test(&file);
-   
-    // Client c;
+    if (ac == 2)
+    {
+        config_file = av[1];
+        ifstream file(config_file);
+        if (!file.is_open())
+        {
+            cout << "Error: config file does not exist" << endl;
+            return 1;
+        }
+        file.close();
+    }
 
-    // c.setFile(av[1]);
+    handleSigPipe();
 
-    SocketClass socket;
-     Worker worker;
-    string req = "DELETE /home/ HTTP/1.1\r\n";
-
-    req += "Host: localhost:8080\r\n";
-
-    req += "\r\n";
-    Request r(Request::deserialize(req));
-
-
-    
-    Configuration config("./conf/default.conf");
-    vector<Server> server = config.getServers();
-    Method m =  worker.getMethodObject(r,server[0]);
-
-    cout << "status : " << m.getStatus() << endl;
-    cout << "path   : " <<m.getPath() << endl;
-    cout << "comme  : "<<m.getComment() << endl;
-    cout << "---------------------" << endl;
-    worker.listenDirectory("/Users/yoelhaim/Desktop/webserv/www") ;
-
-    
-   
-
-
-
-    // cout << c.getPacket() << endl;
-    // SocketClass s;
-    // s.run();
+    SocketClass s(config_file);
+    s.run();
 
     return 0;
 }

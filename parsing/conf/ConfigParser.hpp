@@ -6,7 +6,7 @@
 /*   By: yoelhaim <yoelhaim@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/24 19:30:47 by yoelhaim          #+#    #+#             */
-/*   Updated: 2023/03/11 17:22:24 by yoelhaim         ###   ########.fr       */
+/*   Updated: 2023/04/19 00:44:49 by yoelhaim         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,8 @@
 #include "Server.hpp"
 #include "Http.hpp"
 #include <fstream>
+#define STATUSCODE "201 204 301 400 401 403 404 405 408 413 414 500 501 502 503 504 505"
+
 using namespace std;
 
 class ConfigParser
@@ -31,6 +33,7 @@ private:
     size_t _lenght_server;
     vector<string> _data;
     vector<pair<string, int> > _tokens;
+    vector<string> _directive_allowed;
     
 public:
     ConfigParser();
@@ -38,7 +41,6 @@ public:
     ConfigParser(const ConfigParser &src);
     ConfigParser &operator=(const ConfigParser &src);
     ~ConfigParser();
-    void printData();
     void initalConfig(string content);
 
     void parseLine(string line);
@@ -52,7 +54,7 @@ public:
     vector<string>::iterator  checkContext2(vector<string>::iterator it);
     void checkContext();
 
-    void pushTokinez(int currentIndex, string context);
+    void pushTokinez(size_t currentIndex, string context);
     void pushSemiCurly(string type);
     void checkDirectives(string data);
     void pushDirective(string directive);
@@ -68,14 +70,17 @@ public:
     void checkSyntackInServer(int currentIndex,int index);
     void checkSynaxDirective();
     void checkSyntaxMethod(size_t index);
+    void checkSyntaxReturn(size_t index);
+    void checkValidValue(size_t n);
 
     void checkSyntaxDiplicated();
     void checkSyntaxDiplicatedLocation(size_t index,map<string, bool> &directive);
     size_t lengthDirective(size_t index);
-    void  lenghtServer(int index);
+    void  lenghtServer(size_t index);
     int getLengthServer() const;
     vector<pair<string, int> > getTokens() const;
      void checkCorrectSyntaxDirective(size_t index);
-     void checkSynatxCgi(size_t index, map<string, bool> &directiveLocation);
+   void SetAllowedDirective(bool isInServer);
+   void insetErrorPage();
   
 };

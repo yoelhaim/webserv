@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Configuration.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: matef <matef@student.42.fr>                +#+  +:+       +#+        */
+/*   By: yoelhaim <yoelhaim@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/03/03 22:02:15 by yoelhaim          #+#    #+#             */
-/*   Updated: 2023/03/19 15:54:33 by matef            ###   ########.fr       */
+/*   Updated: 2023/04/19 00:43:12 by yoelhaim         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,10 @@ enum directive
     ALLOWED_METHODS,
     AUTOINDEX,
     RETURN,
-};
+    UPLOAD_ENABLE,
+     CGI_INFO_PHP,
+    CGI_INFO_PYTHON,
+    };
 
 class Configuration
 {
@@ -58,7 +61,7 @@ public:
     void checkDirective(size_t index);
     void checkLocation();
     void checkDirectiveLocation(size_t index, size_t indexServer);
-    size_t getDirectiveLocation(size_t i , size_t indexServer, string nameLocation);
+    size_t getDirectiveLocation(size_t i , size_t indexServer);
     void pushLocation(size_t index, string nameLocation);
     string getKey(int index);
     vector <Server> getServers() const ;

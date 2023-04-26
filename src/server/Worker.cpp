@@ -3,16 +3,17 @@
 /*                                                        :::      ::::::::   */
 /*   Worker.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yoelhaim <yoelhaim@student.42.fr>          +#+  +:+       +#+        */
+/*   By: matef <matef@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/03/21 22:37:31 by yoelhaim          #+#    #+#             */
-/*   Updated: 2023/03/25 18:25:04 by yoelhaim         ###   ########.fr       */
+/*   Updated: 2023/04/19 00:08:44 by matef            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Worker.hpp"
+#include "../methods/get.hpp"
 
-Worker::Worker(/* args */)
+Worker::Worker()
 {
 }
 
@@ -29,59 +30,63 @@ Worker &Worker::operator=(const Worker &copy)
 {
     if (this != &copy)
     {
-        /* data */
+        
     }
     return *this;
 }
 
 bool Worker::getMatchedLocationFoRequestUri(string requestUri, Server &servers)
 {
-    map<string, Location>::iterator it = servers._locations.begin();
+    string location;
+    size_t sizeLocation;
 
+    map<string, Location>::iterator it = servers._locations.begin();
     vector<string> uri = Request::getVector(requestUri, '/');
 
-   
-        size_t sizeLocation = uri.size() ;
-        string location;
+    sizeLocation = uri.size();
+    
+    if (sizeLocation == 0)
+        return (servers.setMatchedLocation("/"), true);
 
-        while (sizeLocation)
+    while (sizeLocation)
+    {
+        for (size_t i = 0; i < uri.size(); i++)
+            location += "/" + uri[i];
+
+        while (it != servers._locations.end())
         {
-            for (size_t i = 0; i < uri.size(); i++)
-                location += "/" + uri[i];
-        
-            while (it != servers._locations.end())
-            {
-                if (it->first == location)
-                    return (servers.setMatchedLocation(it->first) ,true);
-                it++;
-            }
-            it = servers._locations.begin();
-            uri.pop_back();
-            location.clear();
-            sizeLocation--;
+            if (it->first == location)
+                return (servers.setMatchedLocation(it->first), true);
+            it++;
         }
-        
+        it = servers._locations.begin();
+        uri.pop_back();
+        location.clear();
+        sizeLocation--;
+        if (sizeLocation == 0)
+            return (servers.setMatchedLocation("/"), true);
+       
+    }
     return (false);
 }
 
-bool Worker::isLocationHaveRedirection(Server &servers)
+bool Worker::isLocationHaveRedirection(Server &servers, string &path)
 {
     map<string, string> maps = servers._locations[servers.getMatchedLocation()]._directives;
-    
-    return maps.find("return") != maps.end();
+    // path = maps["return"];
+    return maps.find("return") != maps.end() ? path = maps["return"], true : false;
 }
 
 bool Worker::getAllowdedMethods(string methods, string allow)
 {
     vector<string> methodsVector = Request::getVector(methods);
-     for (size_t i = 0; i < methodsVector.size(); i++)
-            if (allow == methodsVector[i])
-                return true;
+    for (size_t i = 0; i < methodsVector.size(); i++)
+        if (allow == methodsVector[i])
+            return true;
     return false;
 }
 
-
-bool Worker::isMethodAllowdedInLocation(string Method,Server &servers)
+bool Worker::isMethodAllowdedInLocation(string Method, Server &servers)
 {
     map<string, string> maps = servers._locations[servers.getMatchedLocation()]._directives;
 
@@ -89,52 +94,99 @@ bool Worker::isMethodAllowdedInLocation(string Method,Server &servers)
         return getAllowdedMethods(maps["allow"], Method);
     else
         return getAllowdedMethods(servers.getAllowedMethods(1), Method);
-    
+
     return false;
 }
 
-
 /************************************************************
  *                METHODS GET DELETE POST                   *
-*************************************************************/ 
+ *************************************************************/
 
-
- Delete  Worker::runMethodDelete(Request &req, Server &server)
+Delete Worker::runMethodDelete(Request &req, Server &server)
 {
-    
-    if (getMatchedLocationFoRequestUri(req.getRessource(), server))
-    {
-       
-        if (isLocationHaveRedirection(server))
-            cout << "redirection" << endl;
-        else if (!isMethodAllowdedInLocation(req.getMethod(),server))
-            cout << "dont allowed" << endl;
-    }
     Delete del(req, server);
-    
+
     return del;
 }
 
-
-
-Method Worker::getMethodObject(Request &req, Server &server)
+Get Worker::runMethodGet(Request &req, Server &server)
 {
-    
-    if (req.getMethod() == "DELETE")
-      return runMethodDelete(req, server);
-    else if (req.getMethod() == "GET")
-        return runMethodDelete(req, server);
-    else
-        return runMethodDelete(req, server);
-      
+    Get get(req, server);
+    return get;
+}
+
+Post Worker::runMethodPost(Request &req, Server &server)
+{
+    Post post(req, server);
+    return post;
+}
+
+bool Worker::checkLocations(Request &req, Server &server, bool &isRedirection, string &path, bool &method)
+{
+    if (getMatchedLocationFoRequestUri(req.getRessource(), server))
+    {
+        if (isLocationHaveRedirection(server, path))
+            return (isRedirection = true, false);
+
+        else if (!isMethodAllowdedInLocation(req.getMethod(), server))
+            return (method = true, false);
+
+        return true;
+    }
+
+    return false;
+}
+
+Method Worker::getMethodObject(Request req, Server server)
+{
+    bool isRedirection = false;
+    bool methods = false;
+    string path;
+
+    if (checkLocations(req, server, isRedirection, path, methods))
+    {
+        if (req.getMethod() == "DELETE")
+            return runMethodDelete(req, server);
+        else if (req.getMethod() == "GET")
+            return runMethodGet(req, server);
+        else
+            return runMethodPost(req, server);
+    }
+    else if (methods)
+        return Method(405, "Method Not Allowed ", "", req, server);
+    else if (isRedirection)
+    {
+        vector<string> urlVector = Request::getVector(path);
+        string messageRedirect;
+        switch (atoi(urlVector[0].c_str()))
+        {
+        case 301:
+            messageRedirect = "Moved Permanently";
+            break;
+        case 302:
+            messageRedirect = "Found";
+            break;
+        case 303:
+            messageRedirect = "See Other";
+            break;
+        case 307:
+            messageRedirect = "Temporary Redirect";
+            break;
+        default:
+            break;
+        }
+
+        return Method(atoi(urlVector[0].c_str()), messageRedirect, urlVector[1], req, server);
+    }
+
+    return Method(req, server);
 }
 
 /************************************************************
  *                         LISTEN DIRE                      *
-*************************************************************/ 
+ *************************************************************/
 
-
-string Worker::listenDirectory(string pathUri)
+string Worker::listenDirectory(string pathUri, string pathDir)
 {
     dirent *pdirent;
     DIR *pdir;
@@ -142,13 +194,14 @@ string Worker::listenDirectory(string pathUri)
 
     string path;
     fstream file("./error_page/index.html");
-    
+
     string str;
-    while (getline(file, str, '\0'));
-    
+    while (getline(file, str, '\0'))
+        ;
+
     if (pdir == NULL)
         return "Error opening directory";
-  
+
     pdirent = readdir(pdir);
     while ((pdirent = readdir(pdir)))
     {
@@ -156,7 +209,7 @@ string Worker::listenDirectory(string pathUri)
         std::string folder = "<i class='fa fa-folder' style='padding:3px;color:#F5E588'></i>";
         std::string typePath = pdirent->d_type != 4 ? file : folder;
 
-        std::string htmlContent = "<tr><td>" + typePath + "<a href='"+pathUri+ "/" + pdirent->d_name + "'>" + pdirent->d_name + "</a></td></tr>\n";
+        std::string htmlContent = "<tr><td>" + typePath + "<a href='" + pathDir + "/" + pdirent->d_name + "'>" + pdirent->d_name + "</a></td></tr>\n";
         path.append(htmlContent);
     }
 
@@ -170,16 +223,17 @@ string Worker::listenDirectory(string pathUri)
         findindex += path.length();
     }
 
-    size_t pathIndex= str.find("PATHNAME");
+    size_t pathIndex = str.find("PATHNAME");
     if (pathIndex != std::string::npos)
     {
         str.replace(pathIndex, 8, pathUri);
         pathIndex += pathUri.length();
     }
-
-    std::ofstream out("dir.html");
-    out <<  str;
+    std::ofstream out("./configuration/dir/index.html");
+    out << str;
     closedir(pdir);
+    file.close();
+    out.close();
 
     return str;
 }
